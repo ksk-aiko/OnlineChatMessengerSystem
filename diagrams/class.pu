@@ -1,0 +1,21 @@
+@startuml
+class Client {
+  + connectToServer()
+  + sendMessage()
+  + receiveMessage()
+}
+
+class Server {
+  + handleTCP()
+  + handleUDP()
+  + manageTokens()
+}
+
+class Database {
+  + storeRoomInfo()
+  + validateToken()
+}
+
+Client --> Server
+Server --> Database
+@enduml

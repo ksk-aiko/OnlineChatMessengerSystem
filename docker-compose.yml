@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  chat-server:
+    build: .
+    ports:
+      - "5000:5000"
+      - "6000:6000/udp"
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - chat-network
+
+networks:
+  chat-network:
+    driver: bridge

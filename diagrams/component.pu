@@ -1,0 +1,10 @@
+@startuml
+package "System" {
+  [Client]
+  [Server]
+  [Database]
+}
+
+Client --> Server
+Server --> Database
+@enduml

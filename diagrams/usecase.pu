@@ -1,0 +1,9 @@
+@startuml
+actor User
+rectangle "Chat System" {
+  User --> (Create Chat Room)
+  User --> (Join Chat Room)
+  User --> (Send Message)
+  User --> (Receive Message)
+}
+@enduml

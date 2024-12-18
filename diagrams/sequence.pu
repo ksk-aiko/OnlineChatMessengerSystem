@@ -1,0 +1,6 @@
+@startuml
+Client -> Server: Request (TCP)
+Server --> Client: Token (TCP)
+Client -> Server: Connect to Room (UDP)
+Server -> Room: Broadcast message (UDP)
+@enduml

@@ -1,0 +1,13 @@
+@startuml
+start
+:User selects Create or Join;
+if (Create Room?) then (yes)
+  :Server generates token;
+else (no)
+  :Server authenticates user;
+endif
+:Server sends response;
+:User connects via UDP;
+:Messaging begins;
+stop
+@enduml
