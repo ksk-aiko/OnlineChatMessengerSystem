@@ -1,3 +1,20 @@
+"""
+This module implements a simple online chat messenger system server using TCP and UDP protocols.
+Functions:
+    handle_tcp_connection(client_socket, address):
+        Handles TCP connections. Receives requests from clients to create or join chat rooms.
+    udp_handler(server_socket):
+        Handles UDP connections. Receives messages from clients and distributes them to all clients in the room.
+    main():
+        Configures and starts the TCP and UDP servers, and handles incoming connections.
+Global Variables:
+    TCP_PORT (int): The port number for TCP connections.
+    UDP_PORT (int): The port number for UDP connections.
+    BUFFER_SIZE (int): The buffer size for receiving data.
+    rooms (dict): A dictionary to manage chat rooms and their members.
+    tokens (dict): A dictionary to manage user tokens and their associated information.
+"""
+
 import socket
 import threading
 import json
@@ -51,5 +68,44 @@ def handle_tcp_connection(client_socket, address):
     finally:
         client_socket.close()
 
+def udp_handler(server_socket):
+    # Handles UDP connections. Receives messages from clients and distributes them to all clients in the room.
+    while True:
+        try:
+            # receive udp data
+            data, address = server_socket.recvfrom(BUFFER_SIZE)
+            room_name, token, message = data.decode('utf-8').split("|", 2)
 
+            # Check room and token
+            if room_name in rooms and token in rooms[room_name]["members"]:
+                for member_token in rooms[room_name]["members"]:
+                    if member_token in rooms[room_name]["members"]:
+                        target = tokens.get(member_token)
+                        if target:
+                            target_ip = target["ip"]
+                            server_socket.sendto(f"{token}|{message}").encode('utf-8'), (target_ip, UDP_PORT)
+        except Exception as e:
+            print(f"Error handling UDP handler: {e}")
 
+def main():
+    # Configure TCP socket
+    tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp_socket.bind("0.0.0.0", TCP_PORT)
+    tcp_socket.listen(5)
+
+    # Configure UDP socket
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_socket.bind("0.0.0.0", UDP_PORT)
+
+    print(f"Server is running on TCP:{TCP_PORT} and UDP:{UDP_PORT}")
+
+    # Start UDP handler in a separate thread
+    threading.Thread(target=udp_handler, args=(udp_socket,), daemon=True).start()
+
+    # Wait for TCP connection
+    while True:
+        client_socket, address = tcp_socket.accept()
+        threading.Thread(target=handle_tcp_connection, args=(client_socket, address), daemon=True).start()
+
+if __name__ == "__main__":
+    main()
