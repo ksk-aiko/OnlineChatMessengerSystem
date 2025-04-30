@@ -50,6 +50,33 @@ def connect_to_server(host, room_name, username, operation):
     finally:
         client_socket.close()
 
+def message_sender(udp_socket, server_address, token, room_name, username):
+    print("Message sender started.")
+
+    while True:
+        message_text = input()
+
+        if message_text.lower() == "exit":
+            print("Exiting chat room.")
+            exit_message = {
+                "operation": "leave",
+                "token": token,
+                "room_name": room_name,
+                "username": username
+            }
+            udp_socket.sendto(json.dumps(exit_message).encode('utf-8'), server_address) 
+            break
+
+        message = {
+            "operation": "message",
+            "token": token,
+            "room_name": room_name,
+            "username": username,
+            "message": message_text
+        }
+
+        udp_socket.sendto(json.dumps(message).encode('utf-8'), server_address)
+
 def main():
     print("Welcome to the Chat Room!")
     print("1. Create a new room")
