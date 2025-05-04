@@ -26,8 +26,8 @@ import sys
 # Constants
 # TCP and UDP settings
 TCP_HOST = "localhost"
-TCP_PORT = 5000
-UDP_PORT = 6000
+TCP_PORT = 5001
+UDP_PORT = 6001
 BUFFER_SIZE = 4096
 
 # Function to connect to the server

@@ -20,8 +20,8 @@ import threading
 import json
 
 # server settings
-TCP_PORT = 5000
-UDP_PORT = 6000
+TCP_PORT = 5001
+UDP_PORT = 6001
 BUFFER_SIZE = 4096
 
 # room and token management
@@ -85,7 +85,7 @@ def udp_handler(server_socket):
                     username = request.get("username")
                     message_text = request.get("message")
                     for member_token in rooms[room_name]["members"]:
-                        target = tokens.get[member_token]
+                        target = tokens.get(member_token)
                         if target:
                             target_ip = target["ip"]
                             response = {
@@ -118,7 +118,7 @@ def main():
 
     # Configure UDP socket
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_socket.bind("0.0.0.0", UDP_PORT)
+    udp_socket.bind(("0.0.0.0", UDP_PORT))
 
     print(f"Server is running on TCP:{TCP_PORT} and UDP:{UDP_PORT}")
 
