@@ -74,11 +74,15 @@ def udp_handler(server_socket):
         try:
             # receive udp data
             data, address = server_socket.recvfrom(BUFFER_SIZE)
+            print(f"Received UDP data from {address}: {data.decode('utf-8')}")
             request = json.loads(data.decode('utf-8'))
-            token = request["token"]
-            room_name = request["room_name"]
-            operation = request["operation"]
+            token = request.get("token")
+            room_name = request.get("room_name")
+            operation = request.get("operation")
 
+            if token is None:
+                print("Invalid request: No token provided.")
+                continue
             # Check room and token
             if room_name in rooms and token in rooms[room_name]["members"]:
                 if operation == "message":

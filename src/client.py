@@ -57,6 +57,9 @@ def connect_to_server(host, room_name, username, operation):
 # Function to send and receive messages
 def message_sender(udp_socket, server_address, token, room_name, username):
     print("Message sender started.")
+    print(f"Using token: {token}")
+    print(f"Room name: {room_name}")
+    print(f"server address: {server_address}")
 
     while True:
         message_text = input()
