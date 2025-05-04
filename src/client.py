@@ -23,11 +23,15 @@ import json
 import threading
 import sys
 
+# Constants
+# TCP and UDP settings
 TCP_HOST = "localhost"
 TCP_PORT = 5000
 UDP_PORT = 6000
 BUFFER_SIZE = 4096
 
+# Function to connect to the server
+# and create or join a chat room
 def connect_to_server(host, room_name, username, operation):
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -50,6 +54,7 @@ def connect_to_server(host, room_name, username, operation):
     finally:
         client_socket.close()
 
+# Function to send and receive messages
 def message_sender(udp_socket, server_address, token, room_name, username):
     print("Message sender started.")
 
@@ -77,6 +82,30 @@ def message_sender(udp_socket, server_address, token, room_name, username):
 
         udp_socket.sendto(json.dumps(message).encode('utf-8'), server_address)
 
+def message_receiver(udp_socket):
+
+    udp_socket.settimeout(0.5)
+
+    while True:
+     try:
+        data, _ = udp_socket.recvfrom(BUFFER_SIZE)
+        response = json.loads(data.decode('utf-8'))
+
+        if response["status"] == "success":
+            if "message" in response and "sender" in response:
+                print(f"{response['sender']}: {response['message']}")
+            elif "system_message" in response:
+                print(f"[SYSTEM] {response['system_message']}")
+        else:
+            print(f"[ERROR] {response.get('message', 'Unknown error')}")
+     except socket.timeout:
+         continue
+     except json.JSONDecodeError:
+         print("[ERROR] Failed to decode message.")
+     except Exception as e:
+         print(f"[ERROR] An error occurred: {e}")
+         break
+        
 def main():
     print("Welcome to the Chat Room!")
     print("1. Create a new room")
@@ -86,11 +115,26 @@ def main():
     username = input("Enter your username: ")
     room_name = input("Enter the room name: ")
 
-    operation = "create" if choice == "1" else "join_room"
+    operation = "create_room" if choice == "1" else "join_room"
     response = connect_to_server(TCP_HOST, room_name, username, operation)
 
     if response["status"] == "success":
         print(f"Connected to server: token: {response['token']}")
+        try:
+            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            server_address = (TCP_HOST, UDP_PORT)
+
+            receiver_thread = threading.Thread(target=message_receiver, args=(udp_socket, ))
+            receiver_thread.daemon = True
+            receiver_thread.start()
+
+            message_sender(udp_socket, server_address, response['token'], room_name, username)
+        except Exception as e:
+            print(f"Error in message handling: {e}")
+        finally:
+            udp_socket.close()
+            sys.exit(0)
+
     else:
         print(f"Failed to connect: {response.get('message', 'Unknown error')}")
 
