@@ -83,6 +83,8 @@ def message_sender(udp_socket, server_address, token, room_name, username):
             "message": message_text
         }
 
+        print(f"Sending message: {message}")
+
         udp_socket.sendto(json.dumps(message).encode('utf-8'), server_address)
 
 def message_receiver(udp_socket):
@@ -120,6 +122,7 @@ def main():
 
     operation = "create_room" if choice == "1" else "join_room"
     response = connect_to_server(TCP_HOST, room_name, username, operation)
+    print(f"Full response object: {response}")
 
     if response["status"] == "success":
         print(f"Connected to server: token: {response['token']}")
