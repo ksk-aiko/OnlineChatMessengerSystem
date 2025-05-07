@@ -102,3 +102,35 @@ class TestChatServer(unittest.TestCase):
 
         self.assertEqual(len(rooms["test_room"]["members"]), 1)
         self.assertIn(test_token, rooms["test_room"]["members"])
+    
+    def test_join_room_success(self):
+        host_token = "test_room-host_user-127.0.0.1"
+        rooms["test_room"] = {"host": host_token, "members": [host_token]}
+        tokens[host_token] = {"username": "host_user", "ip": "127.0.0.1"}
+
+        mock_socket = MagicMock()
+        client_address = ('192.168.1.20', 54321)
+
+        request_data = {
+            "operation": "join_room",
+            "room_name": "test_room",
+            "username": "new_user"
+        }
+
+        mock_socket.recv.return_value = json.dumps(request_data).encode('utf-8')
+
+        handle_tcp_connection(mock_socket, client_address)
+
+        expected_token = f"test_room-new_user-{client_address[0]}"
+
+        self.assertIn(expected_token, rooms["test_room"]["members"])
+
+        self.assertEqual(tokens[expected_token]["username"], "new_user")
+        self.assertEqual(tokens[expected_token]["ip"], client_address[0])
+
+        expected_response = {
+            "status": "success",
+            "token": expected_token
+        }
+        mock_socket.send.assert_called_with(json.dumps(expected_response).encode('utf-8'))
+
