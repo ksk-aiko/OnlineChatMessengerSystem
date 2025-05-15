@@ -133,4 +133,27 @@ class TestChatServer(unittest.TestCase):
             "token": expected_token
         }
         mock_socket.send.assert_called_with(json.dumps(expected_response).encode('utf-8'))
+    
+    def test_join_room_not_found(self):
+        mock_socket = MagicMock()
+        client_address = ('192.168.1.20', 54321)
 
+        request_data = {
+            "operation": "join_room",
+            "room_name": "non_existent_room",
+            "username": "lost_user"
+        }
+
+        mock_socket.recv.return_value = json.dumps(request_data).encode('utf-8')
+
+        handle_tcp_connection(mock_socket, client_address)
+
+        expected_response = {
+            "status": "error",
+            "message": "Room not found."
+        }
+        mock_socket.send.assert_called_with(json.dumps(expected_response).encode('utf-8'))
+
+        self.assertNotIn("non_existent_room", rooms)
+        expected_token = f"non_existent_room-lost_user-{client_address[0]}"
+        self.assertNotIn(expected_token, tokens)
