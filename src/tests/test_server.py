@@ -17,11 +17,12 @@ import sys
 import os
 import json
 import socket
+import threading
 from unittest.mock import patch, MagicMock
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from ..server import handle_tcp_connection, udp_handler, rooms, tokens
+from ..server import handle_tcp_connection, udp_handler, rooms, tokens, UDP_PORT
 
 class TestChatServer(unittest.TestCase):
     
@@ -157,3 +158,65 @@ class TestChatServer(unittest.TestCase):
         self.assertNotIn("non_existent_room", rooms)
         expected_token = f"non_existent_room-lost_user-{client_address[0]}"
         self.assertNotIn(expected_token, tokens)
+    
+    def test_message_handling(self):
+        # Set up a test room and two users in advance
+        host_token = "test_room-host_user-127.0.0.1"
+        client_token = "test_room-client_user-127.0.0.2"
+
+        rooms["test_room"] = {"host": host_token, "members": [host_token, client_token]}
+        tokens[host_token] = {"username": "host_user", "ip": "127.0.0.1"}
+        tokens[client_token] = {"username": "client_user", "ip": "127.0.0.2"}
+
+        # Create a mock UDP socket
+        mock_socket = MagicMock()
+        sender_address = ('127.0.0.1', 12345) # Simulated sender address
+
+        # Simulate a request to send a message
+        message_data = {
+            "operation": "message",
+            "token": host_token,
+            "room_name": "test_room",
+            "username": "host_user",
+            "message": "Hello, everyone!"
+        }
+
+        # Set incoming data and address
+        mock_socket.recvfrom.return_value = (
+            json.dumps(message_data).encode('utf-8'),
+            sender_address
+        )
+
+        # Create a function to be executed only once to test only a part of udp_handler
+        def run_once():
+            udp_handler(mock_socket)
+
+        # Apply patch to avoid infinite loop
+        with patch('builtins.print'):
+            # run_once in another thread (with timeout)
+            thread = threading.Thread(target=run_once)
+            thread.daemon = True
+            thread.start()
+            thread.join(timeout=0.5)
+        
+        # Check if the message was sent to all members
+        # of transmissions = number of members
+        self.assertEqual(mock_socket.sendto.call_count, 2)
+
+        # Check the contents of the message sent
+        expected_response = {
+            "status": "success",
+            "sender": "host_user",
+            "message": "Hello, everyone!"
+        }
+
+        # Check transmission to each member
+        calls = mock_socket.sendto.call_args_list
+        for member_token, call in zip([host_token, client_token], calls):
+            member_ip = tokens[member_token]["ip"]
+            # Confirmation of sent data
+            sent_data = json.loads(call[0][0].decode('utf-8'))
+            self.assertEqual(sent_data, expected_response)
+            # Confirm destination address
+            self.assertEqual(call[0][1][0], member_ip)
+            self.assertEqual(call[0][1][1], UDP_PORT)
