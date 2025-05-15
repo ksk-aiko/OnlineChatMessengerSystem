@@ -16,8 +16,6 @@ import unittest
 import sys
 import os
 import json
-import socket
-import threading
 from unittest.mock import patch, MagicMock
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
@@ -181,24 +179,19 @@ class TestChatServer(unittest.TestCase):
             "message": "Hello, everyone!"
         }
 
-        # Set incoming data and address
-        mock_socket.recvfrom.return_value = (
-            json.dumps(message_data).encode('utf-8'),
-            sender_address
-        )
-
-        # Create a function to be executed only once to test only a part of udp_handler
-        def run_once():
-            udp_handler(mock_socket)
-
         # Apply patch to avoid infinite loop
+        mock_socket.recvfrom.side_effect = [
+            (json.dumps(message_data).encode('utf-8'), sender_address),
+            Exception("Stop loop")
+        ]
+
         with patch('builtins.print'):
-            # run_once in another thread (with timeout)
-            thread = threading.Thread(target=run_once)
-            thread.daemon = True
-            thread.start()
-            thread.join(timeout=0.5)
-        
+            try:
+                udp_handler(mock_socket)
+            except Exception as e:
+                if str(e) != "Stop loop":
+                    raise
+
         # Check if the message was sent to all members
         # of transmissions = number of members
         self.assertEqual(mock_socket.sendto.call_count, 2)

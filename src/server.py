@@ -113,6 +113,9 @@ def udp_handler(server_socket):
                                 server_socket.sendto(json.dumps(response).encode('utf-8'), (target_ip, UDP_PORT))
         except Exception as e:
             print(f"Error handling UDP handler: {e}")
+            # Stop loop if a specific error occurs
+            if str(e) == "Stop loop":
+                break
 
 def main():
     # Configure TCP socket
