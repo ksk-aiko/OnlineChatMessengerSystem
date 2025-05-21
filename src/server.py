@@ -109,7 +109,7 @@ def udp_handler(server_socket):
                                     target_ip = target["ip"]
                                     response = {
                                         "status": "success",
-                                        "system_message": f"{username} has left the room."
+                                        "system_message": f"{username} has left the room.closing the room."
                                     }
                                     server_socket.sendto(json.dumps(response).encode('utf-8'), (target_ip, UDP_PORT))
                             del rooms[room_name]
