@@ -213,3 +213,128 @@ class TestChatServer(unittest.TestCase):
             # Confirm destination address
             self.assertEqual(call[0][1][0], member_ip)
             self.assertEqual(call[0][1][1], UDP_PORT)
+    
+    def test_leave_room_regular_member(self):
+        # Set up a test room and users in advance
+        host_token = "test_room-host_user-127.0.0.1"
+        member_token = "test_room-member_user-127.0.0.2"
+        other_token = "test_room-other_user-127.0.0.3"
+
+        rooms["test_room"] = {
+            "host": host_token,
+            "members": [host_token, member_token, other_token]
+        }
+        tokens[host_token] = {"username": "host_user", "ip": "127.0.0.1"}
+        tokens[member_token] = {"username": "member_user", "ip": "127.0.0.2"}
+        tokens[other_token] = {"username": "other_user", "ip": "127.0.0.3"}
+
+        # Create a mock socket
+        mock_socket = MagicMock()
+        sender_address = ('127.0.0.2', 12345)
+
+        # Simulate a request to leave the room
+        leave_data = {
+            "operation": "leave",
+            "token": member_token,
+            "room_name": "test_room",
+            "username": "member_user"
+        }
+
+        # Set up the side effect for the mock socket
+        mock_socket.recvfrom.side_effect = [
+            (json.dumps(leave_data).encode('utf-8'), sender_address),
+            Exception("Stop loop")
+        ]
+
+        # Execute the test
+        with patch('builtins.print'):
+            try:
+                udp_handler(mock_socket)
+            except Exception as e:
+                if str(e) != "Stop loop":
+                    raise
+
+        # Check if the member was removed from the room
+        self.assertNotIn(member_token, rooms["test_room"]["members"])
+        # Check if host is unchanged
+        self.assertEqual(rooms["test_room"]["host"], host_token)
+        # Check if the room still exists
+        self.assertIn("test_room", rooms)
+        # Check if the other user is still in the room
+        self.assertIn(other_token, rooms["test_room"]["members"])
+
+        # Check if the system message was sent to all members
+        expected_system_message = {
+            "status": "success",
+            "system_message": "member_user has left the room."
+        }
+
+        self.assertEqual(mock_socket.sendto.call_count, 2) # host and other
+
+    def test_leave_room_host(self):
+        # Set up a test room and users in advance
+        host_token = "test_room-host_user-127.0.0.1"
+        member_token = "test_room-member_user-127.0.0.2"
+        other_token = "test_room-other_user-127.0.0.3"
+
+        rooms["test_room"] = {
+            "host": host_token,
+            "members": [host_token, member_token, other_token]
+        }
+        tokens[host_token] = {"username": "host_user", "ip": "127.0.0.1"}
+        tokens[member_token] = {"username": "member_user", "ip": "127.0.0.2"}
+        tokens[other_token] = {"username": "other_user", "ip": "127.0.0.3"}
+
+        # Create a mock socket
+        mock_socket = MagicMock()
+        sender_address = ('127.0.0.1', 12345)
+
+        # Simulate a request to leave the room
+        leave_data = {
+            "operation": "leave",
+            "token": host_token,
+            "room_name": "test_room",
+            "username": "host_user"
+        }
+
+        # Set up the side effect for the mock socket
+        mock_socket.recvfrom.side_effect = [
+            (json.dumps(leave_data).encode('utf-8'), sender_address),
+            Exception("Stop loop")
+        ]
+
+        # Execute the test
+        with patch('builtins.print'):
+            try:
+                udp_handler(mock_socket)
+            except Exception as e:
+                if str(e) != "Stop loop":
+                    raise
+    
+        # Check if the room was deleted
+        self.assertNotIn("test_room", rooms)
+
+        # Check if the system message was sent to all members
+        expected_system_message = {
+            "status": "success",
+            "system_message": "host_user has left the room.closing the room."
+        }
+
+        # Check to see if notifications were sent to all remaining members
+        self.assertEqual(mock_socket.sendto.call_count, 2) # member and other
+
+        # Check Destination
+        calls = mock_socket.sendto.call_args_list
+        member_ips = [tokens[member_token]["ip"], tokens[other_token]["ip"]]
+
+        for call in calls:
+            sent_data = json.loads(call[0][0].decode('utf-8'))
+            self.assertEqual(sent_data.get("status"), "success")
+            self.assertTrue("system_message" in sent_data)
+            self.assertTrue("host" in sent_data["system_message"])
+            self.assertTrue("closing" in sent_data["system_message"])
+
+            # Check that it is sent to the appropriate IP address
+            sent_ip = call[0][1][0]
+            self.assertIn(sent_ip, member_ips)
+

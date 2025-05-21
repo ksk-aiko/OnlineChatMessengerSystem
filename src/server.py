@@ -102,15 +102,27 @@ def udp_handler(server_socket):
                     username = request.get("username")
                     if token in rooms[room_name]["members"]:
                         rooms[room_name]["members"].remove(token)
-                        for member_token in rooms[room_name]["members"]:
-                            target = tokens.get(member_token)
-                            if target:
-                                target_ip = target["ip"]
-                                response = {
-                                    "status": "success",
-                                    "system_message": f"{username} has left the room."
-                                }
-                                server_socket.sendto(json.dumps(response).encode('utf-8'), (target_ip, UDP_PORT))
+                        if token == rooms[room_name]["host"]: 
+                            for member_token in rooms[room_name]["members"]:
+                                target = tokens.get(member_token)
+                                if target:
+                                    target_ip = target["ip"]
+                                    response = {
+                                        "status": "success",
+                                        "system_message": f"{username} has left the room."
+                                    }
+                                    server_socket.sendto(json.dumps(response).encode('utf-8'), (target_ip, UDP_PORT))
+                            del rooms[room_name]
+                        else: 
+                            for member_token in rooms[room_name]["members"]:
+                                target = tokens.get(member_token)
+                                if target:
+                                    target_ip = target["ip"]
+                                    response = {
+                                        "status": "success",
+                                        "system_message": f"{username} has left the room."
+                                    }
+                                    server_socket.sendto(json.dumps(response).encode('utf-8'), (target_ip, UDP_PORT))
         except Exception as e:
             print(f"Error handling UDP handler: {e}")
             # Stop loop if a specific error occurs
